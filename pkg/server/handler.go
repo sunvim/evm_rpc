@@ -225,12 +225,16 @@ func (h *JSONRPCHandler) executeMethod(ctx context.Context, handler *methodHandl
 	var result interface{}
 	var err error
 
-	if !results[0].IsNil() {
-		result = results[0].Interface()
+	if results[0].IsValid() && results[0].CanInterface() {
+		if !results[0].IsNil() {
+			result = results[0].Interface()
+		}
 	}
 
-	if !results[1].IsNil() {
-		err = results[1].Interface().(error)
+	if results[1].IsValid() && results[1].CanInterface() {
+		if !results[1].IsNil() {
+			err = results[1].Interface().(error)
+		}
 	}
 
 	return result, err

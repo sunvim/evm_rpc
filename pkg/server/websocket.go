@@ -42,6 +42,7 @@ func NewWebSocketServer(
 	cfg config.WSConfig,
 	handler *JSONRPCHandler,
 	subscriptionManager *SubscriptionManager,
+	allowedOrigins []string,
 ) *WebSocketServer {
 	ws := &WebSocketServer{
 		handler:             handler,
@@ -53,7 +54,19 @@ func NewWebSocketServer(
 			ReadBufferSize:  cfg.ReadBufferSize,
 			WriteBufferSize: cfg.WriteBufferSize,
 			CheckOrigin: func(r *http.Request) bool {
-				return true // Allow all origins; configure as needed
+				// If no allowed origins specified, reject all (secure default)
+				if len(allowedOrigins) == 0 {
+					return false
+				}
+				
+				// Check if origin is allowed
+				origin := r.Header.Get("Origin")
+				for _, allowed := range allowedOrigins {
+					if allowed == "*" || allowed == origin {
+						return true
+					}
+				}
+				return false
 			},
 		},
 	}

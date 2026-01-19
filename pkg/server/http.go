@@ -111,11 +111,17 @@ func (s *HTTPServer) handleHealth(w http.ResponseWriter, r *http.Request) {
 	} else {
 		health["latestBlock"] = latestBlock
 		
-		// Check if we're significantly behind (this is a simple heuristic)
-		// In production, you'd compare with actual network block height
-		timeSinceUpdate := time.Since(time.Now()) // Placeholder
-		if timeSinceUpdate > 5*time.Minute {
-			health["syncing"] = true
+		// Get the latest block to check its timestamp
+		block, blockErr := s.blockReader.GetBlock(ctx, latestBlock)
+		if blockErr == nil {
+			blockTime := time.Unix(int64(block.Time()), 0)
+			timeSinceBlock := time.Since(blockTime)
+			
+			// If the latest block is older than 5 minutes, consider it as syncing
+			if timeSinceBlock > 5*time.Minute {
+				health["syncing"] = true
+				health["timeSinceBlock"] = timeSinceBlock.String()
+			}
 		}
 	}
 
