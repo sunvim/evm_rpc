@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"sync"
 
@@ -403,6 +404,8 @@ func (sm *SubscriptionManager) Stop() {
 
 // generateSubscriptionID generates a unique subscription ID
 func generateSubscriptionID() string {
-	// Generate a random hex string
-	return fmt.Sprintf("0x%x", common.BigToHash(common.Big1).Bytes()[:16])
+	// Generate a random 16-byte array
+	b := make([]byte, 16)
+	rand.Read(b)
+	return fmt.Sprintf("0x%x", b)
 }
