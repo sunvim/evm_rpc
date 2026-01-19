@@ -113,14 +113,18 @@ func (s *HTTPServer) handleHealth(w http.ResponseWriter, r *http.Request) {
 		
 		// Get the latest block to check its timestamp
 		block, blockErr := s.blockReader.GetBlock(ctx, latestBlock)
-		if blockErr == nil {
-			blockTime := time.Unix(int64(block.Time()), 0)
-			timeSinceBlock := time.Since(blockTime)
-			
-			// If the latest block is older than 5 minutes, consider it as syncing
-			if timeSinceBlock > 5*time.Minute {
-				health["syncing"] = true
-				health["timeSinceBlock"] = timeSinceBlock.String()
+		if blockErr == nil && block.Time() > 0 {
+			// Validate timestamp is reasonable (not in far future)
+			blockTimestamp := block.Time()
+			if blockTimestamp < uint64(time.Now().Add(time.Hour).Unix()) {
+				blockTime := time.Unix(int64(blockTimestamp), 0)
+				timeSinceBlock := time.Since(blockTime)
+				
+				// If the latest block is older than 5 minutes, consider it as syncing
+				if timeSinceBlock > 5*time.Minute {
+					health["syncing"] = true
+					health["timeSinceBlock"] = timeSinceBlock.String()
+				}
 			}
 		}
 	}

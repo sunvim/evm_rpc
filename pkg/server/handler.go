@@ -225,16 +225,24 @@ func (h *JSONRPCHandler) executeMethod(ctx context.Context, handler *methodHandl
 	var result interface{}
 	var err error
 
-	if results[0].IsValid() && results[0].CanInterface() {
-		if !results[0].IsNil() {
+	// Check first result (can be any type)
+	if results[0].IsValid() {
+		// Only check IsNil for types that can be nil (pointers, interfaces, slices, maps, channels, funcs)
+		kind := results[0].Kind()
+		if kind == reflect.Ptr || kind == reflect.Interface || kind == reflect.Slice || 
+		   kind == reflect.Map || kind == reflect.Chan || kind == reflect.Func {
+			if results[0].CanInterface() && !results[0].IsNil() {
+				result = results[0].Interface()
+			}
+		} else if results[0].CanInterface() {
+			// For non-nillable types, just get the value
 			result = results[0].Interface()
 		}
 	}
 
-	if results[1].IsValid() && results[1].CanInterface() {
-		if !results[1].IsNil() {
-			err = results[1].Interface().(error)
-		}
+	// Check second result (error interface, can always be nil)
+	if results[1].IsValid() && results[1].CanInterface() && !results[1].IsNil() {
+		err = results[1].Interface().(error)
 	}
 
 	return result, err
