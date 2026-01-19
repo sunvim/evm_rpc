@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # Pika storage (Redis-compatible)
+  pika:
+    image: pikadb/pika:latest
+    container_name: pika
+    ports:
+      - "9221:9221"
+    volumes:
+      - pika-data:/data
+    command: ["./pika", "-c", "/pika/conf/pika.conf"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "9221", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # EVM RPC Service
+  evm-rpc:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile
+    container_name: evm-rpc
+    ports:
+      - "8545:8545"   # HTTP
+      - "8546:8546"   # WebSocket
+      - "8080:8080"   # Health
+      - "9092:9092"   # Metrics
+    environment:
+      - CHAIN_NAME=bsc
+      - PIKA_ADDR=pika:9221
+      - LOG_LEVEL=info
+    volumes:
+      - ./config.yaml:/app/config/config.yaml
+    depends_on:
+      pika:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Prometheus (optional monitoring)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    depends_on:
+      - evm-rpc
+
+  # Grafana (optional visualization)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  pika-data:
+  prometheus-data:
+  grafana-data:
