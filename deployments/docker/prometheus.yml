@@ -1,0 +1,14 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'evm-rpc'
+    static_configs:
+      - targets: ['evm-rpc:9092']
+        labels:
+          service: 'evm-rpc'
+          env: 'production'
+    
+    metrics_path: '/metrics'
+    scrape_interval: 10s
